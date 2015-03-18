@@ -21,7 +21,7 @@ Problem description
 
 * During the agent`s work could be some problems with execution of scripts and
   VM may hang. In this case user will wait indefinitely without knowing
-  what`s happend.
+  what's happend.
 
 * Currently there is no feedback from agent so, it`s impossible to determine
   whether agent is ready to  accept execution plans or not.
@@ -63,7 +63,7 @@ will be created in murano/common/exceptions.py.
 
 3) Add new method *isReady* in Agent class.
 
-This method will be simly call the *waitReady*. Method *isReady* returns:
+This method will be simply call the *waitReady*. Method *isReady* returns:
 
   * *True*, if test plan is executed on time;
 
