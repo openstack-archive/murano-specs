@@ -194,7 +194,7 @@ include the description of all services/applications to be deployed.
 +----------+--------------------------------+-------------------------------------------------+
 | Method   | URI                            | Description                                     |
 +==========+================================+=================================================+
-| GET      | /templates/{env-temp-id}       | Obtains the enviroment template information     |
+| GET      | /templates/{env-temp-id}       | Obtains the environment template information    |
 +----------+--------------------------------+-------------------------------------------------+
 
 *Parameters:*
