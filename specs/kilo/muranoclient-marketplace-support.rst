@@ -30,7 +30,7 @@ Typical use cases:
   install the application in question alongside with all requirements
   (applications and glance images)
 * A developer would want to provide murano applications to end users, by
-  hosting them on a web server and providing http-access to appliaction
+  hosting them on a web server and providing http-access to application
   packages. In that case end users would be able to install the application by
   invoking a CLI command `murano install-package http://path/to/app`
 * End user would want to install bundles of applications that are often
@@ -75,7 +75,7 @@ http application repository.
   Since bundles are currently a simple json/yaml optionally we could optionally
   support direct input.
 * Implement error handling both for CLI-tools and dashboard, that would inform
-  end users about any errors that might have happened alont the way of
+  end users about any errors that might have happened along the way of
   importing.
 * Optionally implement a progress marker and a ETA-marker for CLI `import`
   commands.
