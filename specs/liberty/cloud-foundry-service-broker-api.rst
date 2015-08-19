@@ -49,7 +49,8 @@ The parameters which is needed to murano for successful application deployment
 will store in service object section parameters. The Service Broker itself will
 parse them as soon as Cloud Foundry can't do it. It will be parsed during Provision
 request. The request body will look like that:
-.. code-block:: javascript
+
+::
 
     {
       "service_id":        "service-guid-here",
@@ -112,7 +113,8 @@ methods are as follows:
 
 ::
 
-    {"services": [{
+    {
+     "services": [{
         "id": "service-guid-here",
         "name": "mysql",
         "description": "A MySQL-compatible relational database",
@@ -224,7 +226,7 @@ methods are as follows:
 | 202      | Accepted. Service instance deletion in progress. |
 +----------+--------------------------------------------------+
 | 410      | Returned if service does not exist               |
-+----------------+--------------------------------------------+
++----------+--------------------------------------------------+
 | 422      | Should be returned if the request did not include|
 |          | ?accepts_incomplete=true                         |
 +----------+--------------------------------------------------+
@@ -241,7 +243,8 @@ methods are as follows:
 
 ::
 
-    {"plan_id": "plan_guid_here",
+    {
+     "plan_id": "plan_guid_here",
      "service_id": "service_guid_here",
      "app_guid": "app_guid_here"
     }
@@ -319,10 +322,10 @@ methods are as follows:
 +----------+--------------------------------------------------------+
 
 ::
+
     {
       "state": "in progress",
       "description": "Creating service (10% complete)."
-
     }
 
 
@@ -372,8 +375,8 @@ Changes can be split to this parts:
   should add murano specific API calls.
 
 * Series of extensions for Cloud Foundry API support:
-  * Add update and deprovision API calls
-  * Add bind/unbind API calls
+   * Add update and deprovision API calls
+   * Add bind/unbind API calls
 
 Dependencies
 ============
