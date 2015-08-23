@@ -11,29 +11,23 @@ Implement Cloud Foundry Service Broker API
 https://blueprints.launchpad.net/murano/+spec/cloudfoundry-api-support
 
 Cloud Foundry is PaaS which supports full lifecycle from initial development,
-through all testing stages, to deployment. As far as Cloud Foundry comes in
-three flavours such as Cloud Foundry OSS, Pivotal Cloud Foundry and Pivotal
-Web Services.
+through all testing stages, to deployment. Most well known Cloud Foundry
+flavours is Cloud Foundry OSS, Pivotal Cloud Foundry and Pivotal Web Services.
 
 If we implement Cloud Foundry Service Broker API in murano, murano apps will
-get an ability to be deployed through CloudFoundry itself. This will improve
-PaaS user experience as it will have an ability to integrate his app with
-existing apps in murano and deploy really complex configurations on top of
-OpenStack.
+be available at Cloud Foundry as services. So Cloud Foundry users will be
+granted an ability to operate murano applications.
 
 Problem description
 ===================
 
 Typical scenario of Cloud Foundry and murano collaboration will look like:
 
-0. While configuring murano enable Service Broker. It will be deployed at the
-   same nodes but on the different port.
-1. Deploy Cloud Foundry on the node using murano or manually.
-2. Configure Cloud Foundry to use murano Service Broker.
-3. Deploy murano apps through Cloud Foundry API.
-
-NOTE: as far as we want Cloud Foundry to use murano app catalog the end-user
-will use Cloud Foundry for provisioning.
+1. While configuring murano enable murano service broker in config file. Provide
+   host and port for it.
+2. Add murano Service Broker in Cloud Foundry and grant access to murano apps for
+   Cloud Foundry organization.
+3. Provision murano app as Cloud Foundry service instance using Cloud Foundry tools.
 
 Proposed change
 ===============
@@ -41,16 +35,15 @@ Proposed change
 We need to write Cloud Foundry Service Broker implementation for murano. One of
 the parts of this implementation should be some mapping function between Cloud
 Foundry and OpenStack resources. Now it's planned to map Cloud Foundry
-Organizations to Openstack tenants and Cloud Foundry spaces to murano
+Organizations to OpenStack tenants and Cloud Foundry spaces to murano
 environments. So, all tenant users will be granted with the privileges based on
-their existing roles in OpenStack tenant. And now it looks like we need to have
-to run a murano environment for every single service provisioned in Cloud Foundry.
-The parameters which is needed to murano for successful application deployment
-will store in service object section parameters. The Service Broker itself will
-parse them as soon as Cloud Foundry can't do it. It will be parsed during Provision
-request. The request body will look like that:
+their existing roles in OpenStack tenant. Each Cloud Foundry space will be linked
+wih murano environment. The parameters which is needed to murano for successful
+application deployment will store in service object section parameters. The
+Service Broker itself will parse them as soon as Cloud Foundry can't do it.
+It will be parsed during Provision request. The request body will look like that:
 
-::
+.. code-block:: javascript
 
     {
       "service_id":        "service-guid-here",
@@ -66,9 +59,9 @@ request. The request body will look like that:
 
     }
 
-It's planned to setup a Service Broker as a separate service which will be deployed
-on the same nodes as murano. Additional options should be added to the configs.
-Also we want to use Cloud Foundry experimental asynchronous operations[3].
+It's planned to setup a Service Broker as a separate service. Additional
+options should be added to the configs. Also we want to use Cloud Foundry
+experimental asynchronous operations[3].
 
 Alternatives
 ------------
