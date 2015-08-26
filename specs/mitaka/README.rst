@@ -1,7 +1,7 @@
 Liberty specifications
 ======================
 
-This directory is supposed to hold approved specifications for the 'Liberty' release.
+This directory is supposed to hold approved specifications for the 'Mitaka' release.
 You are welcome in contributing to Murano!
 
 

@@ -20,6 +20,14 @@ Liberty specs:
 
    specs/liberty/*
 
+Mitaka specs:
+
+.. toctree::
+   :glob:
+   :maxdepth: 1
+
+   specs/mitaka/*
+
 ==================
 Indices and tables
 ==================
