@@ -1,4 +1,4 @@
-Liberty specifications
+Mitaka specifications
 ======================
 
 This directory is supposed to hold approved specifications for the 'Mitaka' release.
