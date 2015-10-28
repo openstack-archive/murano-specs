@@ -98,7 +98,7 @@ Deployer impact
 Plugins need to be deployed to each Murano node (or to all machines running
 either Murano API or Murano Engine) in order to support particular package
 type. Installation is done as usually in python (`pip install PATH` or
-`python setyp.py install` etc.)
+`python setup.py install` etc.)
 
 
 Developer impact

@@ -30,7 +30,7 @@ change.
 * Those tests will be put to the application package to allow anyone to test
   this app at any time
 
-* Tests will look like regular unit tests. Testing framework, witch will
+* Tests will look like regular unit tests. Testing framework, which will
   run unit-tests will support commands, that will allow to load test package
   from directory, to call class methods and configure deployments parameters.
   That will make deployment test run easier. Also, test writer may run

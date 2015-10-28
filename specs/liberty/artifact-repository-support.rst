@@ -118,7 +118,7 @@ Alternatives
 We may continue using murano-api to manage our packages, at least till the
 Glance v3 is STABLE, however this will require us to introduce lots of
 temporary code to support things like versioning and dependencies. So, it is
-better to add thr Glance support as an experimental feature, facade it under
+better to add the Glance support as an experimental feature, facade it under
 the python-muranoclient bindings, and migrate to it completely in the next
 release cycle.
 
