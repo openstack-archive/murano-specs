@@ -132,7 +132,7 @@ Each API method which is either added or changed should have the following
   think about when defining their policy.
 
 Versioning impact
--------------------------
+-----------------
 
 Discuss how your change affects versioning and backward compatibility:
 
