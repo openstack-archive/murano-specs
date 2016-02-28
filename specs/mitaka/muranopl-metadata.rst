@@ -10,47 +10,53 @@ MuranoPL metadata to properties, classes, methods
 
 https://blueprints.launchpad.net/murano/+spec/metadata-in-muranopl
 
-Now in MuranoPL is impossible to add metadata for properties, classes or methods,
-which can be used in various situations, such as UI form definitions or action
-calls. To solve this problem MuranoPL metadata is introduced.
+MuranoPL metadata is a way to attach additional information to various MuranoPL
+entities such as classes, packages, methods etc. That information might be used
+by both applications (to implement dynamic programming techniques) or by the
+external callers (API consumers like UI or even by the Murano Engine itself
+to impose some runtime behavior based on well known meta values).
 
 Problem description
 ===================
 
 With time and development of the language new challenges arrived and MuranoPL
-need to be extended with new keywords for new features. Metadata will be used to store
-new information about various MuranoPL entities which can be needed in the future.
-With this new feature MuranoPL will become more flexible and go away from the
-"new keyword for new feature" rule.
+need to be extended with new keywords for new features. Metadata will be used
+to store new information about various MuranoPL entities which can be needed
+in the future. With this new feature MuranoPL will become more flexible and
+go away from the "new keyword for new feature" rule.
 
 Proposed change
 ===============
 
-To resolve a problem that was addressed above it was decided to introduce a new
-way to describe data in MuranoPL - metadata. Python class called `MetaAttribute`
-will be a class describing meta-classes. In MuranoPL app developers will create
-their own meta-classes. Instances of those classes will be attached to classes,
-properties, methods and packages.
+The proposed solution is to introduce another type of classes - meta-classes.
+Meta classes are similar to regular classes but has additional attributes
+that control how and where instances of that meta-class can be attached.
 
-To support metadata functionality it's planned to introduce several new class-level
-keywords:
+To distinguish meta-classes from regular classes new class-level attribute
+will be introduced called `Usage`. When `Usage` is `Class` (which is a default)
+the rest of markup is interpreted as a class. Usage `Meta` is used ot define
+meta-class.
 
-#. `Usage` which will help to separate metadata classes from normal classes. At first
-   `Usage` will support only two values `Meta` and `Class`.
+In addition to Usage the following attributes are available for meta-classes:
 
-#. `Cardinality` (only for `Meta`) will be used to set how much values
-   will be returned from one key in metadata object. Values can be `One` or `Many`.
+#. `Cardinality` - either `One` or `Many` - controls if there can be more than
+   one instance of the meta-class attached to a single language entity.
+   Default is `One`.
 
-#. `Applies` (only for `Meta`) which will define to what type of MuranoPL
-   objects the metadata class can be attached. Values can be `All`, `Class`,
-   `Method`, `Property`, `Package` or combinations of them, e.g. `[Method, Class]`.
+#. `Applies` - one of `Package`, `Type`, `Method`, `Property`, `Argument` or
+   `All` - controls to which of the language entities instances of the meta-
+   class can be attached. It is possible to specify several values using YAML
+   list notation. Default is `All`.
+
+#. `Inherited` - `true` or `false` - specifies if the metadata retained for
+   child classes, overridden methods and properties. Default is `false`.
 
 Now, let's take a look at the examples of the meta-class in MuranoPL:
 
     .. code-block:: yaml
 
        Name: FooMetaOne
-       Usage: MetaAttribute
+       Usage: Meta
        Applies: Property
        Cardinality: One
        Properties:
@@ -65,19 +71,17 @@ Now, let's take a look at the examples of the meta-class in MuranoPL:
     .. code-block:: yaml
 
        Name: FooMetaMany
-       Usage: MetaAttribute
+       Usage: Meta
        Applies: [Property, Method]
        Cardinality: Many
 
+The instances of meta-classes will never have an owner and thus cannot use
+`find()` function.
 
-The instances of meta-classes are going to be immutable since they are part of the
-class/property/etc definitions which are also immutable. As a result there cannot
-be Out/InOut properties and instances of those classes cannot have an owner and
-thus cannot use `find()` function.
-
-Instances of `FooMetaOne` class can be attached to propeties and will return only one
-value to each key-value pair. To attach this class to a property is used `Meta`
-keyword in a property description.
+Instances of `FooMetaOne` class can be attached to properties only and each
+property may have at most on attached `FooMetaOne` instance.
+To attach this class to a property is used `Meta` keyword in a property
+description.
 
     .. code-block:: yaml
 
@@ -96,12 +100,12 @@ keyword in a property description.
          instance:
            Contract: $.class(res:Instance).notNull()
            Meta:
-            - meta:FooMetaOne:
+              meta:FooMetaOne:
                 description: "Stub metaclass"
                 count: 2
 
-As you can see from example above we organize `Meta` attribute as an array. If we
-need to use two examples of the same meta-class it will look like:
+In example above Meta keyword has a scalar value because it is only one
+instance get attached. However it can also be an array:
 
     .. code-block:: yaml
 
@@ -111,10 +115,6 @@ need to use two examples of the same meta-class it will look like:
             count: 2
         - meta:FooMetaMany:
         - meta:FooMetaMany:
-
-Metadata attributes are never inherited. It's decided to be so, because MuranoPL
-supports multiple inheritance and `metadata inheritance` can produce conflicts which
-will be hard to solve.
 
 Metadata can be accessed from MuranoPL using reflection capabilities and from
 Python code using existing yaql mechanism (additional yaql smart type/helper
