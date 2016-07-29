@@ -20,10 +20,25 @@ Problem description
 ===================
 
 With time and development of the language new challenges arrived and MuranoPL
-need to be extended with new keywords for new features. Metadata will be used
-to store new information about various MuranoPL entities which can be needed
-in the future. With this new feature MuranoPL will become more flexible and
-go away from the "new keyword for new feature" rule.
+need to be extended with new keywords for new features. For example, it may
+be needed to mark some method as the one that serves special purpose to
+distinguish it from other methods in the program workflow. Let's say one
+wants to obtain the list of all methods within the class and choose only
+methods that can be called by the unprivileged user. The one way to do
+it is to introduce a new possible value for the `Usage` attribute, something
+like `Usage: Non-admin`. Another way is to introduce even new keyword. The
+problem is that every application developer may need to attach different kinds
+of such information depending on the needs of their apps, and the range of
+these needs can be endless. With the current approach, every new sort of
+additional information requires modification of the core MuranoPL language
+code.
+
+In order to solve this problem, metadata will be used to store new
+information about various MuranoPL entities. With this new feature MuranoPL
+will become more flexible and go away from the "new keyword for new feature"
+rule. All the developer will need to do is to define his own kind of data he
+wants to apply to the elements of his application (in the form of the custom
+MuranoPL class) and use it.
 
 Proposed change
 ===============
@@ -34,7 +49,7 @@ that control how and where instances of that meta-class can be attached.
 
 To distinguish meta-classes from regular classes new class-level attribute
 will be introduced called `Usage`. When `Usage` is `Class` (which is a default)
-the rest of markup is interpreted as a class. Usage `Meta` is used ot define
+the rest of markup is interpreted as a class. Usage `Meta` is used to define
 meta-class.
 
 In addition to Usage the following attributes are available for meta-classes:
