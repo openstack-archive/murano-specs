@@ -85,6 +85,16 @@ often require the following scenarios:
     Network component should be always called after all the VMs have been
     destroyed.*
 
+Another issue is that murano uses ``Objects`` and ``ObjectsCopy`` objects
+to transfer data between deployments. When destruction dependencies are
+implemented, the handler will make changes (if any) to objects in
+``ObjectsCopy``. Therefore, these changes are not applied during the next
+deployment and this should be addressed.
+
+Also, sometimes it can be useful to deallocate resources used by the
+unreferenced objects even before the end of deployment on demand from the
+application code.
+
 Proposed change
 ===============
 
@@ -120,10 +130,9 @@ form such a circle they will still be notified about pending destruction of
 their dependencies, however the order of this notifications - and the
 destruction itself - is undefined in this case.
 
-For now it's proposed to use destruction dependencies only for runtime garbage
-collection. Probably, it will be implemented when we find a solution for issue
-mentioned above in  `Known issues`_.
-
+Destruction dependencies are going to be used during all kinds of garbage
+collection: pre-deployment ("offline"), on-demand (during deployment) and
+post-deployment.
 
 Multi-step destruction
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -132,19 +141,19 @@ Instead of just iterating through all the objects going to be destructed and
 calling their ``.destroy`` methods Murano should perform a multi-step garbage
 collection according to the following algorithm:
 
-1. Detect all the objects going to be destroyed using either comparison of
-   current object graph with its snapshot or the reference detection (see
-   "Offline" and "Online" changes in "Problem description" section)
+1. Detect all the objects going to be destroyed. It can be done by using
+   Python GC to track and collect objects, as described in the
+   *Garbage collection executions* section.
 
 2. Sort the list of detected objects using the following comparator: for
    any two objects A and B in the list:
 
     .. code::
 
-     IF (A has-a-destruction-dependency-on B)
+     IF (A owns B) THEN A>B
+     ELSE IF (A has-a-destruction-dependency-on B)
          AND (NOT B has-a-destruction-dependency-on A)
      THEN A>B
-     ELSE IF (A owns B) THEN A>B
      ELSE A==B
 
    where `has-a-destruction-dependency-on` means that the left operand object
@@ -152,21 +161,28 @@ collection according to the following algorithm:
    `owns` means that the left operand object owns (probably transitively) the
    right operand object.
 
-    .. note::
+   The objects which are considered to be equal by the algorithm above can be
+   destroyed in parallel.
 
-        The destruction order of objects which are considered to be equal by
-        the algorithm above is undefined. Even more, future implementations may
-        destroy such objects in parallel.
+   The result of the sorting is the dictionary with indexes as keys and
+   lists of objects with equal destruction priority as values.
 
+3. Sort the keys of the dictionary in the reversed order of destruction
+   priority and for each key start parallel notification about scheduled
+   destruction of the objects in the corresponding group. During
+   notification, handlers of the objects that have a destruction dependency on
+   some "sentenced" object will be invoked.
 
-3. For each object in the list:
+4. Sort the keys of the dictionary in the direct order of destruction
+   priority and for each index in the dictionary start parallel destruction of
+   all objects in the corresponding group. Destruction of individual object
+   means calling the ``.destroy()`` method of the object if present and
+   changing the object's status to "Destroyed" (see below).
 
-   3.1. Notify all the objects having a destruction dependency on it that the
-        target object will be destroyed.
-
-   3.2. Call the ``.destroy()`` method of the object if it is present.
-
-   3.3. Change the object's status to "Destroyed" (see below).
+   As an environment does not have owners, it will always be in the last
+   group of destruction. There is no guarantee that some other objects (for
+   example, heat stack) will be alive at the time of its destruction. Thus
+   ``io.murano.Environment`` class should not have the ``.destroy()`` method.
 
 Destroyed objects
 ^^^^^^^^^^^^^^^^^
@@ -174,7 +190,7 @@ Destroyed objects
 When an object is being processed by a garbage collector, it means that there
 are no live references to it from the objects of the environment. However there
 may be cases when the code which handles either the pre-destroy notification
-(p. 3.1 above) or the actual ``.destroy`` method re-establishes the references
+(step 4 above) or the actual ``.destroy`` method re-establishes the references
 to the object being destructed, and thus the object remains in the object graph
 after the GC is completed. Since the resources may be deallocated at this time
 the regular usage of the object is not possible, however if it is assigned to
@@ -182,8 +198,10 @@ a property of some another object in the graph it may not always be possible to
 just nullify that property since it may cause a contract violation.
 
 To resolve such collisions it is proposed to explicitly mark such destroyed
-objects as "destroyed". MuranoPL executor will not allow to execute any methods
-on such objects, however their properties remain accessible (i.e. readable) so
+objects as "destroyed". It means setting object's ``destroyed`` attribute to
+``True`` and removing the self-reference from it.
+MuranoPL executor will not allow to execute any methods on such objects,
+however their properties remain accessible (i.e. readable) so
 any runtime information associated with them may be recovered. Destroyed
 objects will be serialized with the rest of object graph but the
 json-representation of the object will have a special flag in their class
@@ -191,9 +209,8 @@ header (the "?" section) to indicate their special status. When deserialized
 from json such objects will retain their "destroyed" status, so the method
 execution will still be impossible even in subsequent deployments.
 
-When the destroyed objects are unreferenced from the object graph they go away
-without additional actions: garbage collector ignores them since their
-resources have already been released.
+When "destroyed" objects are unreferenced from the object graph, their
+properties get nullified and they get destroyed automatically by Python GC.
 
 Garbage collection executions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -218,53 +235,50 @@ different scenarios:
    (including runtime and private properties) AND not being referenced by local
    variables in any frame of all the the green threads of current deployment.
 
-To implement p.3 above a new algorithm is needed. It should analyze all the
-active contexts of all the running greenthreads of the current deployment and
-retrieve all the data variables from that context, traversing through the
-parent contexts as well. All the objects of ``MuranoObject`` type collected
-this way should be added to the "queue of active roots" to be used for further
-processing.
-For each object of this queue the algorithm should save the id of the object
-into the "result set" and then find objects which are reachable from the
-current one (i.e. the objects of ``MuranoObject`` type contained in properties
-of any kind). For each such object the algorithm should check whether its id is
-already present in the "result set". If not, the object is added to the end of
-"queue of active roots". The algorithm runs till it processes all the objects
-of the queue.
-The "result set" which the algorithm gets at the end of this process contains
-the ids of alive objects. All other objects of the object store should be
-considered as candidates for garbage collection.
+To implement scenario 3, a new algorithm is needed. As mentioned in the
+*Multi-step destruction* section, Python garbage collector can be used
+for that. MuranoPL can make use of the way Python's ``gc.collect`` works.
 
-There should be one additional check made before doing the actual destruction:
-some of the objects may have no valid access paths from MuranoPL objects, but
-could be referenced from some python-back objects. This happens when an Object
-is passed to some method backed with pythonic code. In this case the executor
-creates an object of type ``MuranoObjectInterface`` - a wrapper to simplify the
-work with a murano object from python. This object contains a reference to the
-actual MuranoPL object within. If appropriate python object is alive, then
-its corresponding MuranoPL object should not be garbage collected even if there
-are no references to it from the active roots of MuranoPL.
-To keep track of such situations the Garbage Collector should contain a special
-dictionary mapping ids of the objects to the weak proxies pointing to the
-``MuranoObjectInterface`` objects passed to pythonic code. For every garbage
-collection candidate the algorithm should check if there is a map entry for
-this object and the weak proxy at that entry is alive. If this is true, then
-the object is excluded from the list of GC candidates.
+Python library ``gc`` allows running on-demand garbage collection through the
+``gc.collect()`` method and provides access to unreachable objects that the
+collector found but cannot free through collection ``gc.garbage`` [2].
 
-The resulting list of GC candidates is then destroyed as described in
-"Multi-step destruction" section above.
+To make use of this, there should be an ability to:
 
-Known issues
-^^^^^^^^^^^^
+* Make object store have weak links only and prevent hard links in other DSL
+  places so that only links between objects remain.
 
-Murano is using ``Objects`` and ``ObjectsCopy`` objects to transfer data between
-deployments. When destruction dependencies will be implemented handler will make
-changes (if any) to objects in ``ObjectsCopy``. So, this changes aren't applied
-during next deployment.
+* Prevent murano objects that should have been destroyed by Python GC from
+  being destroyed.
 
-It's proposed to change the way of object model generation, with updating new model
-objects if they have been changed after last deployment. However, solving this
-issued is not an aim of this specification, so we can skip details.
+* Get the list of such objects and destroy them in correct order and notify
+  subscribers about destruction.
+
+The prevention can be done by adding ``__del__()`` magic method to the
+MuranoObject class and creating cyclic reference in the object to itself.
+When ``gc.collect()`` is done, all unreachable objects can be examined and
+murano objects owned by current executor can be distinguished among them.
+
+The difference in Python 3.4 and higher is that objects with a ``__del__()``
+method don't end up in ``gc.garbage`` anymore and this list should be empty
+most of the time [3]. So logic of adding object to GC candidates can be added
+directly to ``__del__()``.
+
+It means that in Python versions 3.4 and higher, murano objects will be added
+to planned destruction from ``__del__()`` call caused by ``gc.collect()``,
+and in versions prior to 3.4, presence of ``__del__()`` along with cyclic
+reference to itself will provide adding the object to ``gc.garbage`` list,
+and it can be added to candidates for destruction from there.
+
+This logic can be used for garbage collection in all three scenarios
+mentioned above.
+
+The resulting list of GC candidates is then destroyed as described in the
+*Multi-step destruction* section above.
+
+With this approach, the comparison of Objects and ObjectsCopy is not needed
+anymore. Garbage collector works with the same objects on each deployment,
+so all changes are saved properly.
 
 Code changes
 ------------
@@ -282,21 +296,21 @@ library. It should have the following static methods:
 * ``isDestroyed(object)`` - checks if the ``object`` was already destroyed
   during some GC session and thus its methods cannot be called.
 
-* ``subscribe(target, handler=null)`` - establishes a destruction dependency
-  from the caller to the object passed as ``target``. Method may be called
-  several times, in this case only a single destruction dependency will be
-  established, however the same amount of calls of ``unsubscribe`` will be
-  required to remove it.
+* ``isDoomed(object)`` - can be used within the ``.destroy()`` method to
+  test if another object is also going to be destroyed.
+
+* ``subscribeDestruction(publisher, subscriber, handler=null)`` - establishes
+  a destruction dependency from the ``subscriber`` to the object passed as
+  ``publisher``. Method may be called several times, in this case only a single
+  destruction dependency will be established, however the same amount of calls
+  of ``unsubscribeDestruction`` will be required to remove it.
 
   ``handler`` argument is optional. If passed it should be the name of an
-  instance methods defined by the caller class to handle notification of
-  ``target``'s destruction (see "Multi-step destruction" section above: this
-  handlers is executed for p. 3.1)
+  instance method defined by the caller class to handle notification of
+  ``publisher``'s destruction (see "Multi-step destruction" section above: this
+  handler is executed for p. 3.1)
 
-  The following arguments will be passed to the handler method
-
-  * ``sender`` - an instance of ``GC`` class describing the current
-    garbage collection session.
+  The following arguments will be passed to the handler method:
 
   * ``object`` - a target object which is going to be destroyed. It is not
     recommended to persist the reference to this object anywhere. This will not
@@ -305,35 +319,15 @@ library. It should have the following static methods:
     so is considered to be advanced feature which should not be done unless it
     is absolutely necessary.
 
-* ``unsubscribe(target)`` - removes the destruction dependency from the caller
-  to the object passed as ``target``. Method may be called several times
-  without any side-effects. If ``subscribe`` was called more than once the same
-  (or more) amount of calls to ``unsubscribe`` is needed to remove the
+* ``unsubscribeDestruction(publisher, subscriber, handler=null)`` - removes
+  the destruction dependency from the ``subscriber`` to the object passed as
+  ``publisher``. Method may be called several times without any side-effects.
+  If ``subscribeDestruction`` was called more than once the same (or more)
+  amount of calls to ``unsubscribeDestruction`` is needed to remove the
   dependency.
 
-An instance of ``GC`` class will be created during the garbage collection
-session to encapsulate runtime information about this session. It defines a
-single method which may be of use during a GC session:
-
-* ``isDoomed(object)`` - checks if the ``object`` is marked for destruction
-  during this GC session.
-
-Pythonic back-end of the ``GC`` class should be able to establish destruction
-dependencies by storing the back-refs to the dependent object in attributes of
-the python's instance of MuranoObject representing the dependency.
-
-    .. note::
-
-        This is the opposite of how the destruction dependencies are stored
-        when the model is serialized: in serialized form that is the dependent
-        object who owns the reference to the dependency object. In runtime it
-        is the dependency  object who owns the reference to dependent object.
-
-
-When the garbage collection is needed the class will be instantiated and a list
-of objects-to-delete created based on the current state of object graph, object
-store and the execution context. Garbage collections will use this object for
-all the steps of the workflow.
+  ``handler`` argument is optional and must correspond the handler passed
+  during subscription if it was provided back then.
 
 Alternatives
 ------------
@@ -399,6 +393,7 @@ Primary assignee:
   ativelkov
 
 Other contributors:
+  Stan Lagun <istalker2>
   starodubcevna
 
 Work Items
@@ -412,14 +407,11 @@ Work Items
 * Modify the serializer / deserializer to properly persist the value of the
   "destroyed object" flag.
 
-* Modify the code which instantiates yaql contexts for MuranoPL so all the
-  created contexts are tracked by the execution session.
+* Implement collecting unreferenced murano objects utilizing Python ``gc``
+  library
 
 * Implement sorting algorithms to arrange objects-to-be-destroyed based on
   criteria defined in p.2 of "Multi-step destruction" section above.
-
-* Modify an algorithm to collect alive object roots from the runtime and
-  private properties and local variables of executing threads.
 
 * Implement multi-step destruction workflow.
 
@@ -476,7 +468,7 @@ There should be test cases covering that:
   python ARE garbage collected;
 
 * garbage collector correctly processes stack-frame objects from green-threads
-  other than the one it is executed from;
+  other than the one it is executed from
 
 Destruction dependency resolution order
 ---------------------------------------
@@ -502,16 +494,14 @@ Destruction events
 Given the base scenario of object A having a destruction dependency on object B
 and B being GC'ed, there should be tests covering that:
 
-* the right order of events occurs (A gets warned about possible B's
-  destruction -> A is notified about inevitable B's destruction -> B is
-  destroyed -> A is notified that B was destroyed);
+* the right order of events occurs (B scheduled for destruction -> A is
+  notified about planned B's destruction -> B's ``.destroy()`` method is
+  called -> B gets destroyed);
 
-* A may prevent B's destruction by establishing a reference on B in the warning
+* A may prevent B's destruction by establishing a reference on B in the
   handler;
 
-* A may cancel GC in both warning and pre-destroy notification handlers;
-
-* A may establish more then 1 destruction dependency on B and still be
+* A may establish more than 1 destruction dependency on B and still be
   notified just once;
 
 * A may remove the destruction dependency and not get notified on B's
@@ -526,8 +516,6 @@ and B being GC'ed, there should be tests covering that:
 * B may establish a destruction dependency on itself thus subscribing to
   appropriate notifications;
 
-* ``phase`` property of GC instance is correct in appropriate event handlers;
-
 * ``isDoomed`` and ``isDestroyed`` methods return appropriate values when
   called by A for B in appropriate event handlers.
 
@@ -535,10 +523,12 @@ Documentation Impact
 ====================
 
 Developers documentation should be updated to describe the new ``GC`` class and
-its static and instance methods, as well as the design guidelines for
-application developers to follow to utilize the new capability.
+its methods, as well as the design guidelines for application developers to
+follow to utilize the new capability.
 
 References
 ==========
 
 [1] https://github.com/openstack/murano-specs/blob/master/specs/newton/approved/application-development-framework.rst
+[2] https://docs.python.org/2/library/gc.html
+[3] https://docs.python.org/3/library/gc.html
