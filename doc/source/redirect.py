@@ -12,8 +12,8 @@ from sphinx.util.console import bold
 
 
 def setup(app):
-    from sphinx.application import Sphinx
-    if not isinstance(app, Sphinx):
+    from sphinx import application
+    if not isinstance(app, application.Sphinx):
         return
     app.connect('build-finished', emit_redirects)
 
