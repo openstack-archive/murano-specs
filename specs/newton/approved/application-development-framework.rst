@@ -69,35 +69,36 @@ the generic level as well as to implement it for the case of the Servers/VMs:
 
 ::
 
-           +-------+
-           | +-------+
-           | | +--------+  +------------------+    +-----------------+
-           | | |        |  |                  |    |                 |
-           +-+ | Object <--+ ReplicationGroup +----> ReplicaProvider |
-             +-+        |  |                  |    |                 |
-               +--------+  +------+-----------+    +-+-------------+-+
-                                  ^                  ^             ^
-                                  |                  |             |
-                                  |   +--------------+----------+  |
-                                  |   |                         |  |
- +-------+                        |   | TemplateReplicaProvider |  |
- | +-------+                      |   |                         +--+----+
- | | +----------+                 |   +----------+--------------+       |
- | | |          |                 |              | CloneReplicaProvider |
- +-+ | Instance +-----+           |              |                      |
-   +-+          |     |           |              +--------+-------------+
-     +----------+     |           |                       ^
-                      |           |                       |
-                      |           |           +-----------+------+
-                      |           |           |                  |
-              +-------+-----------+-+         | InstanceProvider +--+
-              |                     +--------->                  |  |
-              |    InstanceGroup    |         +-----+------------+  +---+
-              |                     |               |               |   |
-              +---------------------+               +---+-----------+   |
+ +-------+
+ | +-------+
+ | | +--------+        +------------------+        +-----------------+
+ | | |        |        |                  |        |                 |
+ +-+ | Object <--------+ ReplicationGroup +--------> ReplicaProvider |
+   +-+        |        |                  |        |                 |
+     +--------+        +---+--------------+        +-+--------+------+
+                           ^                         ^        ^
+                           |                         |        |
+                           |      +------------------+-----+  |
+                           |      |                        |  |
+ +-------+                 |      |  CloneReplicaProvider  |  |
+ | +-------+               |      |                        |  |
+ | | +----------+          |      +------------------------+  |
+ | | |          |          |                                  |
+ +-+ | Instance |          |                                  |
+   +-+          |          |                                  |
+     +----+-----+          |                                  |
+          |                |                                  |
+    +-----+-------+        |                                  |
+    |             |        |                                  |
+    | ServerGroup |        |                  +---------------+--+
+    |             |        |                  |     Template     |
+    +-----^-------+    +---+----------+       |      Server      +--+
+          |            |    Server    +------->     Provider     |  |
+          +------------+  Replication |       +-----+------------+  +---+
+                       |    Group     |             |               |   |
+                       +--------------+             +---+---other---+   |
                                                         |               |
                                                         +---------------+
-                                               (other replica providers)
 
 
 
@@ -105,30 +106,27 @@ the generic level as well as to implement it for the case of the Servers/VMs:
 **ReplicationGroup**
 
     A base class which does the object replication. It holds the collection of
-    objects in one of its InputOutput properties (so the objects may be both
-    generated in runtime and passed as the user input) and contains a reference
-    to a ``ReplicaProvider`` object which is used to dynamically generate the
-    objects in runtime.
+    objects generated in runtime in one of its output properties and contains
+    a reference to a ``ReplicaProvider`` object which is used to dynamically
+    generate the objects in runtime.
 
-    Input properties of this class include the ``minReplicas`` and
-    ``maxReplicas`` allowing to limit the number of objects it holds in its
-    collection.
+    Input properties of this class include the ``minItems`` and ``maxItems``
+    allowing to limit the number of objects it holds in its collection.
 
-    An input-output property ``requiredNumberOfReplicas`` allows to
-    declaratively change the set of objects in the collection by setting its
-    size.
+    An input-output property ``numItems`` allows to declaratively change the
+    set of objects in the collection by setting its size.
 
     The ``deploy`` method of this class will be used to apply the replica
     settings: it will drop the objects from the collection if their number
-    exceeds the specified by the ``requiredNumberOfReplicas`` or generate some
-    new if there are not enough of them.
+    exceeds the specified by the ``numItems`` or generate some new if there
+    are not enough of them.
 
 
 **ReplicaProvider**
 
     A class to generate the objects for a ``ReplicationGroup``. The base one
     is abstract, its inheritors should implement the abstract
-    ``createInstance`` method to create the actual object. The method may
+    ``createReplica`` method to create the actual object. The method may
     accept some index parameter to properly parametrize the newly created copy.
 
     The concrete implementations of this class should define all the input
@@ -136,39 +134,33 @@ the generic level as well as to implement it for the case of the Servers/VMs:
     actually acts as a template of the object it generates.
 
 
-**TemplateReplicaProvider**
-
-    An implementation of ``ReplicaProvider`` capable to create replicas based
-    on a user-provided template, being a yaml-based definition of some
-    arbitrary object.
-
-
 **CloneReplicaProvider**
 
-    An implementation of ``ReplicaProvider`` similar to the
-    ``TemplateReplicaProvider``, capable to create replicas by cloning some
-    user-provided object. The difference between this class and the
-    ``TemplateReplicaProvider`` is that for ``CloneReplicaProvider`` the target
-    object should be a real object (thus having all the properties valid,
-    matching all the contracts etc), while the template of
-    ``TemplateReplicaProvider`` is just a dict which may be missing some of the
-    required properties etc.
+    An implementation of ``ReplicaProvider`` capable to create replicas by
+    cloning some user-provided object, making use of the ``template()``
+    contract.
 
 
-**InstanceGroup**
+**ServerGroup**
 
-    A subclass of ``ReplicationGroup`` class to replicate the ``Instance``
-    objects it holds.
+    A class that provides static methods for deployment and releasing
+    resources on the group of instances.
+
+
+**ServerReplicationGroup**
+
+    A subclass of the ``ReplicationGroup`` class and the ``ServerGroup``
+    class to replicate the ``Instance`` objects it holds.
 
     The ``deploy`` method of this group not only generates new instances of
     servers but also deploys them if needed.
 
-**InstanceProvider**
+**TemplateServerProvider**
 
     A subclass of ``CloneReplicaProvider`` which is used to produce the objects
     of ``Instance`` class by cloning them with subsequent parameterization of
-    the hostnames. May be passed as ``replicaProvider`` property to objects of
-    ``InstanceGroup`` class.
+    the hostnames. May be passed as ``provider`` property to objects of the
+    ``ServerReplicationGroup`` class.
 
 **other replica providers**
 
@@ -180,18 +172,12 @@ the generic level as well as to implement it for the case of the Servers/VMs:
 Software Components
 ~~~~~~~~~~~~~~~~~~~
 
-The main classes to handle the lifecycle of the application are the
-``BaseSoftwareComponent`` and its subclasses:
+The class to handle the lifecycle of the application is the
+``SoftwareComponent`` class which is a subclass of ``Installable`` and
+``Configurable``:
 
 ::
 
-         +-----------------------+
-         |                       |
-         | BaseSoftwareComponent |
-         |                       |
-         +---+---------------+---+
-             ^               ^
-             |               |
  +-----------+-+           +-+------------+
  |             |           |              |
  | Installable |           | Configurable |
@@ -225,12 +211,11 @@ two parts should improve the developers' experience and simplify the code of
 derived classes.
 
 The standard workflows (such as Installation and Configuration) will be defined
-by two subclasses of ``BaseSoftwareComponent`` - ``Installable`` and
-``Configurable``. The main implementation - ``SoftwareComponent`` will inherit
-both these classes and will define its deployment workflow as a sequence of
-Installation and Configuration flows. Other future implementations may add new
-workflow interfaces and mix them in to change the deployment workflow or add
-new actions.
+by the ``Installable`` and ``Configurable`` classes. The main implementation -
+``SoftwareComponent`` will inherit both these classes and will define its
+deployment workflow as a sequence of Installation and Configuration flows.
+Other future implementations may add new workflow interfaces and mix them in
+to change the deployment workflow or add new actions.
 
 
 Installation workflow consists of the following methods:
@@ -244,7 +229,7 @@ Installation workflow consists of the following methods:
  |    +------------------------------+ |                             +---------------+ |                                |
  |  +------------------------------+ | |      +---------------+    +---------------+ | |      +----------------------+  |
  |  |                              | | |      |               |    |               | | |      |                      |  |
- |  | checkServerNeedsInstallation | +-+ +----> beforeInstall +----> installServer | +-+ +----> completeInstallation |  |
+ |  |    checkServerIsInstalled    | +-+ +----> beforeInstall +----> installServer | +-+ +----> completeInstallation |  |
  |  |                              +-+        |               |    |               +-+        |                      |  |
  |  +------------------------------+          +------+--------+    +------+--------+          +-----------+----------+  |
  |                                                   |                    |                               |             |
@@ -257,66 +242,66 @@ Installation workflow consists of the following methods:
 
 
 **install**
-    * **Arguments:** ``ServerGroup``
+    * **Arguments:** ``serverGroup``
     * **Description:**
       Entry point of the installation workflow.
 
       Iterates through all the servers of the passed ServerGroup and calls the
-      ``checkServerNeedsInstallation`` method for each of them. If at least one
-      of the calls has returned `True` calls a ``beforeInstall`` method. Then,
-      for each server which returned `True` as the result of the
-      ``checkServerNeedsInstallation`` calls the ``installServer`` method to do
+      ``checkServerIsInstalled`` method for each of them. If at least one
+      of the calls has returned `false` calls a ``beforeInstall`` method. Then,
+      for each server which returned `false` as the result of the
+      ``checkServerIsInstalled`` calls the ``installServer`` method to do
       the actual software installation.
       After the installation has been completed on all the servers and if at
-      least one of the previous calls of ``checkServerNeedsInstallation``
-      returned `True` the method runs the ``completeInstallation`` method.
+      least one of the previous calls of ``checkServerIsInstalled``
+      returned `false` the method runs the ``completeInstallation`` method.
 
-      If all the calls to ``checkServerNeedsInstallation`` returned `False`
+      If all the calls to ``checkServerIsInstalled`` returned `true`
       this method concludes without calling any others.
 
 **checkServerNeedsInstallation**
-    * **Arguments:** ``Server``
+    * **Arguments:** ``server``
     * **Description:** checks if the given server requires a (re)deployment of
-      the software component. By default checks for the presence of attribute
-      `installed_at_%serverId%` being set by the ``installServer`` method.
+      the software component. By default checks for the value of the attribute
+      `installed` of the instance.
 
-      May be overriden by subclasses to provide some better logic (e.g. the
+      May be overridden by subclasses to provide some better logic (e.g. the
       app developer may provide code to check if the given software is
       pre-installed on the image which was provisioned on the VM)
 
 **beforeInstall**
-    * **Arguments:** ``ServerGroup``
+    * **Arguments:** ``servers``, ``serverGroup``
     * **Description:**
-      Reports the beginning of installation process, resets an error counter of
-      the current deployment to zero and calls the public event handler
-      ``onBeforeInstall``.
+      Reports the beginning of installation process and calls the public event
+      handler ``onBeforeInstall``.
 
 **onBeforeInstall**
-    * **Arguments:** ``ServerGroup``
+    * **Arguments:** ``servers``, ``serverGroup``
     * **Description:** Public handler of the `beforeInstall` event. Empty in
-      the base class, may be overriden in subclasses if some custom pre-install
+      the base class, may be overridden in subclasses if some custom pre-install
       logic needs to be executed.
 
 **installServer**
-    * **Arguments:** ``Server``
-    * **Description:** does the actual software deployment on a given server by
+    * **Arguments:** ``server``, ``serverGroup``
+    * **Description:** Does the actual software deployment on a given server by
       calling an ``onInstallServer`` public event handler. If the installation
-      completes successfully sets the `installed_at_%serverId%` attribute of
-      the component's attribute storage to indicate that the software component
-      was installed on that particular machine. If an exception was encountered
-      during the invocation of ``onInstallServer`` the method will handle that
-      exception, report a  warning and increment the error counter for the
-      particular deployment.
+      completes successfully sets the `installed` attribute of the server to
+      `true`, reports successful installation and returns `null`. If an
+      exception encountered during the invocation of ``onInstallServer``, the
+      method handles that exception, reports a warning and returns the server.
+      The return value of the method indicates to the ``install`` method how
+      many failures encountered in total during the installation and with what
+      servers.
 
 **onInstallServer**
-    * **Arguments:** ``Server``
+    * **Arguments:** ``server``, ``serverGroup``
     * **Description:** an event-handler method which is called by the
       ``installServer`` method when the actual software deployment is needed.
       Is  empty in the base class. The implementations should override it with
       custom logic to deploy the actual software bits.
 
 **completeInstallation**
-    * **Arguments:** ``ServerGroup``
+    * **Arguments:** ``servers``, ``serverGroup``, ``failedServers``
     * **Description:** is executed after all the ``installServer`` methods were
       called. Checks for the number of errors reported during the installation:
       if it is greater than some pre-configurable threshold an exception is
@@ -325,7 +310,7 @@ Installation workflow consists of the following methods:
       completion of the installation workflow.
 
 **onCompleteInstallation**
-    * **Arguments:** ``ServerGroup``
+    * **Arguments:** ``servers``, ``serverGroup``, ``failedServers``
     * **Description:** an event-handler method which is called by the
       ``completeInstallation`` method when the component installation is about
       to be completed.
@@ -338,61 +323,61 @@ Configuration workflow consists of the following methods:
 
 ::
 
- +-------------------------------------------------------------------------------------------------------------------------+
- | CONFIGURATION                                                                                                           |
- |               +-------------------------------------+                                                                   |
- |               |                                     |                                                                   |
- |               |                             +------------------+       +-----------------+                              |
- |               |                           +------------------+ |     +-----------------+ |                              |
- |  +------------v--+   +--------------+   +------------------+ | |   +-----------------+ | |   +-----------------------+  |
- |  |               |   |              |   |                  | | |   |                 | | |   |                       |  |
- |  | checkNeedsRe\ +---> preConfigure +---> checkServerNeeds\| +-+---> configureServer | +-+---> completeConfiguration |  |
- |  | configuration |   |              |   | Reconfiguration  +-+     |                 +-+     |                       |  |
- |  +------------+--+   +------+-------+   +------------------+       +--------+--------+       +-----------+-----------+  |
- |               |             |                                               |                            |              |
- |               |             |                                               |                            |              |
- |          +----v---+         |                                               |                            |              |
- |          |        |         |                                               |                            |              |
- |          | getKey |         |                                               |                            |              |
- |          |        |         |                                               |                            |              |
- |          +--------+         |                                               |                            |              |
- |                             |                                               |                            |              |
- +-------------------------------------------------------------------------------------------------------------------------+
-                               |                                               |                            |
-                               |                                               |                            |
-                               v                                               v                            v
-                         onPreConfigure                                onConfigureServer          onCompleteConfiguration
-
+ +----------------------------------------------------------------------------------------------------------------------+
+ | CONFIGURATION                                                                                                        |
+ |               +-----------------+                                                                                    |
+ |               |                 |                                                                                    |
+ |               |          +---------------+                          +-----------------+                              |
+ |               |        +---------------+ |                        +-----------------+ |                              |
+ |  +------------v--+   +---------------+ | |   +--------------+   +-----------------+ | |   +-----------------------+  |
+ |  |               |   |               | | |   |              |   |                 | | |   |                       |  |
+ |  | checkCluster\ +---> checkServer\  | +-+---> preConfigure +---> configureServer | +-+---> completeConfiguration |  |
+ |  | IsConfigured  |   | IsConfigured  +-+     |              |   |                 +-+     |                       |  |
+ |  +------------+--+   +---------------+       +------+-------+   +--------+--------+       +-----------+-----------+  |
+ |               |                                     |                    |                            |              |
+ |               |                                     |                    |                            |              |
+ |    +----------v----------+                          |                    |                            |              |
+ |    |                     |                          |                    |                            |              |
+ |    | getConfigurationKey |                          |                    |                            |              |
+ |    |                     |                          |                    |                            |              |
+ |    +---------------------+                          |                    |                            |              |
+ |                                                     |                    |                            |              |
+ +----------------------------------------------------------------------------------------------------------------------+
+                                                       |                    |                            |
+                                                       |                    |                            |
+                                                       v                    v                            v
+                                                 onPreConfigure     onConfigureServer          onCompleteConfiguration
 
 
 **configure**
-    * **Arguments:** ``ServerGroup``
+    * **Arguments:** ``serverGroup``
     * **Description:**
       Entry point of the configuration workflow.
 
-      Calls a ``checkNeedsReconfiguration`` method. If the call does not return
-      `True` workflow exits without doing anything. Otherwise calls
-      ``preConfigure`` method and then iterates through all the servers of
-      the passed ServerGroup. For each server it calls
-      ``checkServerNeedsReconfiguration`` method. If that call returns `True`
-      then a ``configureServer`` is called for that server. At the end calls a
-      ``completeConfiguration`` method if at least one call of
-      ``configureServer`` was made.
+      Calls a ``checkClusterIsConfigured`` method. If the call returns `true`,
+      workflow exits without any further action. Otherwise for each server in
+      the ``serverGroup`` it calls ``checkServerIsConfigured`` method and gets
+      the list of servers that need reconfiguration. The ``preConfigure``
+      method is called with that list. At the end calls the
+      ``completeConfiguration`` method.
 
-**checkNeedsReconfiguration**
-    * **Arguments:** ``ServerGroup``
-    * **Description:** has to return `True` if the configuration (i.e. the
-      values of input properties) of the component has been changed since it
-      was last deployed on the given Server Group. Default implementation calls
-      a ``getKey`` method and compares the returned result with a value of
-      `configuration_of_%serverGroupId%` attribute. If the results do not match
-      returns `True` otherwise `False`.
+**checkClusterIsConfigured**
+    * **Arguments:** ``serverGroup``
+    * **Description:**
+      Has to return `true` if the configuration (i.e. the values of input
+      properties) of the component has not been changed since it was last
+      deployed on the given server group. Default implementation calls the
+      ``getConfigurationKey`` method and compares the returned result with a
+      value of `configuration` attribute of ``serverGroup``. If the results
+      match returns `true` otherwise `false`.
 
-**getKey**
+**getConfigurationKey**
     * **Arguments:** None
-    * **Description:** should return some values describing the configuration
-      state of the component. This state is used to track the changes of the
-      configuration by the ``checkNeedsReconfiguration`` method.
+    * **Description:**
+      Should return some values describing the configuration state of the
+      component. This state is used to track the changes of the configuration
+      by the ``checkClusterIsConfigured`` and ``checkServerIsConfigured``
+      methods.
 
       Default implementation returns a synthetic value which gets updated on
       every environment redeployment. Thus the subsequent calls of the
@@ -402,73 +387,79 @@ Configuration workflow consists of the following methods:
 
       The inheritors may redefine this to include the actual values of the
       configuration properties, so the configuration is reapplied only if the
-      appropriate input properties were changed.
+      appropriate input properties are changed.
+
+**checkServerIsConfigured**
+    * **Arguments:** ``server``, ``serverGroup``
+    * **Description:**
+      It is called to check if the particular server of the server group has
+      to be reconfigured thus providing more precise control compared to
+      cluster-wide ``checkClusterIsConfigured``.
+
+      Default implementation calls the ``getConfigurationKey`` method and
+      compares the returned result with a value of `configuration` attribute
+      of the server. If the results match returns `true` otherwise `false`.
+
+      This method gets called only if the ``checkClusterIsConfigured`` method
+      returned `false` for the whole server group.
 
 **preConfigure**
-    * **Arguments:** ``ServerGroup``
+    * **Arguments:** ``servers``, ``serverGroup``
     * **Description:**
-      Reports the beginning of configuration process, resets an error counter
-      of the current configuration to zero and calls the public event handler
-      ``onPreConfigure``. This method is called once per the server group and
-      only if the changes in configuration are detected.
+      Reports the beginning of configuration process and calls the public
+      event handler ``onPreConfigure``. This method is called once per the
+      server group and only if the changes in configuration are detected.
 
 **onPreConfigure**
-    * **Arguments:** ``ServerGroup``
+    * **Arguments:** ``servers``, ``serverGroup``
     * **Description:**
-      a public event-handler which is called by the ``preConfigure`` method
+      Public event-handler which is called by the ``preConfigure`` method
       when the (re)configuration of the component is required.
 
-      Default implementation is empty. Inheritors my implement this method to
+      Default implementation is empty. Inheritors may implement this method to
       set various kinds of cluster-wide states or output properties which may
       be of use at later stages of the workflow.
 
-**checkServerNeedsReconfiguration**
-    * **Arguments:** ``Server``
-    * **Description:** is called to check if the particular server of the
-      server group has to be reconfigured thus providing more precise control
-      compared to cluster-wide ``checkNeedsReconfiguration``.
-
-      Default implementation calls a ``getKey`` method and compares the
-      returned result with a value of `configuration_of_%serverId%` attribute.
-      If the results do not match returns `True` otherwise `False`.
-
-      This method gets called only if the ``checkNeedsReconfiguration`` method
-      returned `True` for the whole server group.
-
 **configureServer**
-    * **Arguments:** ``Server``
-    * **Description:** does the actual software configuration on a given server
-      by calling an ``onConfigureServer`` public event handler.
-      If the configuration completes successfully calls the ``getKey`` method
-      and sets the `configuration_of_%serverId%` attribute to resulting value
-      thus saving the configuration applied to a given server.
+    * **Arguments:** ``server``, ``serverGroup``
+    * **Description:**
+      Does the actual software configuration on a given server by calling the
+      ``onConfigureServer`` public event handler. If the configuration
+      completes successfully calls the ``getConfigurationKey`` method and sets
+      the `configuration` attribute of the server to resulting value thus
+      saving the configuration applied to a given server. Returns `null` to
+      indicate successful configuration.
 
-      If an exception was encountered during the invocation of
-      ``onConfigureServer`` the method will handle that exception, report a
-      warning and increment the error counter for the particular deployment.
+      If an exception encountered during the invocation of
+      ``onConfigureServer``, the method will handle that exception, report a
+      warning and return the current server to signal its failure to the
+      ``configure`` method.
 
 **onConfigureServer**
-    * **Arguments:** ``Server``
-    * **Description:** an event-handler method which is called by the
-      ``configureServer`` method when the actual software configuration is
-      needed. Is  empty in the base class. The implementations should override
-      it with custom logic to apply the actual software configuration on a
-      given server.
+    * **Arguments:** ``server``, ``serverGroup``
+    * **Description:**
+      An event-handler method which is called by the ``configureServer``
+      method when the actual software configuration is needed. It is empty in
+      the base class. The implementations should override it with custom logic
+      to apply the actual software configuration on a given server.
 
 **completeConfiguration**
-    * **Arguments:** ``ServerGroup``
-    * **Description:** is executed after all the ``configureServer`` methods
-      were called. Checks for the number of errors reported during the
-      configuration: if it is greater than some pre-configurable threshold an
-      exception is risen to interrupt the deployment workflow. Otherwise the
-      method calls an ``onCompleteConfiguration`` event handler and then
-      reports a successful completion of the configuration workflow.
+    * **Arguments:** ``servers``, ``serverGroup``, ``failedServers``
+    * **Description:**
+      It is executed after all the ``configureServer`` methods were called.
+      Checks for the number of errors reported during the configuration: if it
+      is greater than set by some pre-configured threshold, an exception is
+      risen to interrupt the deployment workflow. Otherwise the method calls
+      an ``onCompleteConfiguration`` event handler, calls the
+      ``getConfigurationKey`` method and sets the `configuration` attribute of
+      the server group to resulting value and then reports successful
+      completion of the configuration workflow.
 
 **onCompleteConfiguration**
-    * **Arguments:** ``ServerGroup``
-    * **Description:** an event-handler method which is called by the
-      ``completeConfiguration`` method when the component configuration was
-      finished at all the servers.
+    * **Arguments:** ``servers``, ``serverGroup``, ``failedServers``
+    * **Description:**
+      The event-handler method which is called by the ``completeConfiguration``
+      method when the component configuration is finished at all the servers.
 
       Default implementation is empty. Inheritors may implement this method to
       add some final handling, reporting etc.
@@ -516,7 +507,7 @@ Uninstallation workflow consists of the following methods:
 **onBeforeUninstall**
     * **Arguments:** ``ServerGroup``
     * **Description:** Public handler of the `beforeUninstall` event. Empty in
-      the base class, may be overriden in subclasses if some custom pre
+      the base class, may be overridden in subclasses if some custom pre
       uninstall logic needs to be executed.
 
 **uninstallServer**
