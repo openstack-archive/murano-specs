@@ -37,6 +37,14 @@ Newton specs:
    specs/newton/approved/*
    specs/newton/implemented/*
 
+Ocata specs:
+
+.. toctree::
+   :glob:
+   :maxdepth: 1
+
+   specs/ocata/approved/*
+
 ==========================
 Murano apps Specifications
 ==========================
