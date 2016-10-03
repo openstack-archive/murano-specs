@@ -233,7 +233,7 @@ different scenarios:
    Destroys objects which are not part of the **complete** object graph, i.e.
    having no references to them from any properties of the environment
    (including runtime and private properties) AND not being referenced by local
-   variables in any frame of all the the green threads of current deployment.
+   variables in any frame of all the green threads of current deployment.
 
 To implement scenario 3, a new algorithm is needed. As mentioned in the
 *Multi-step destruction* section, Python garbage collector can be used

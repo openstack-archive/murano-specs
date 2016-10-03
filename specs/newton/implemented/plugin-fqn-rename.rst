@@ -164,7 +164,7 @@ compatibility mode.
 Developer impact
 ----------------
 
-Plugin developers will have to update their plugin according the the correct
+Plugin developers will have to update their plugin according the correct
 naming scheme.
 
 Application developers using the plugins will have to rename the class usages
