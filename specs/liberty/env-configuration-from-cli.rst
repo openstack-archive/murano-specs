@@ -79,7 +79,7 @@ An example ``app_patch.json`` might look like::
   ]
 
 All operations would only apply to services field, so the `/services/` part of
-the path can be ommited.
+the path can be ommitted.
 
 note::
     This means, that a user has to generate unique ids. This can be a difficult
