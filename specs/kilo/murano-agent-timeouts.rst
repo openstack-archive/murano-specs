@@ -19,14 +19,14 @@ in Murano engine.
 Problem description
 ===================
 
-* During the agent`s work could be some problems with execution of scripts and
+* During the agent`s work there could be some problems with execution of scripts and
   VM may hang. In this case user will wait indefinitely without knowing
-  what's happend.
+  what's happened.
 
 * Currently there is no feedback from agent so, it`s impossible to determine
   whether agent is ready to  accept execution plans or not.
 
-It is proposed to provide mechanism of timeouts which solve these problems.
+It is proposed to provide mechanism of timeouts which solves these problems.
 
 Proposed change
 ===============
@@ -50,7 +50,7 @@ body::
 
   template = {'Body': 'return', 'FormatVersion': '2.0.0', 'Scripts': {}}
 
-and sends this plan once to agent by method *call*. It can be uses by developer
+and sends this plan once to agent by method *call*. It can be used by developer
 to stop deployment before sending template of app if agent is inaccessible as
 follows::
 
@@ -63,7 +63,7 @@ will be created in murano/common/exceptions.py.
 
 3) Add new method *isReady* in Agent class.
 
-This method will be simply call the *waitReady*. Method *isReady* returns:
+This method will simply call the *waitReady*. Method *isReady* returns:
 
   * *True*, if test plan is executed on time;
 
@@ -71,7 +71,7 @@ This method will be simply call the *waitReady*. Method *isReady* returns:
     limit.
 
   * and raise *PolicyViolationException*, which will be created in
-    murano/coommon/exceptions,py, if the agent disabled by the server.
+    murano/common/exceptions.py, if the agent disabled by the server.
 
 The method can be used during development Murano-applications. For example,
 developer can check if the agent is running and ready to execute templates
