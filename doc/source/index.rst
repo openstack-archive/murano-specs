@@ -45,6 +45,14 @@ Ocata specs:
 
    specs/ocata/approved/*
 
+Pike specs:
+
+.. toctree::
+   :glob:
+   :maxdepth: 1
+
+   specs/pike/approved/*
+
 ==========================
 Murano apps Specifications
 ==========================
