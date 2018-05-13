@@ -234,4 +234,4 @@ References
 * http://jsonpatch.com
 * https://tools.ietf.org/html/rfc6902
 * https://tools.ietf.org/html/rfc7159
-* https://pypi.python.org/pypi/jsonpatch
+* https://pypi.org/project/jsonpatch
