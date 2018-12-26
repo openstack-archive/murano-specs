@@ -66,7 +66,7 @@ The following are benefits from the approach:
 * It will be easier for operators to understand the intent of the policy
   operations and where they are enforced in the system.
 * It will be easier to provide a description of each policy much like we do
-  configuartion options. This will ensure that the policies are well-documented
+  configuration options. This will ensure that the policies are well-documented
   and maintained.
 
 Alternatives
