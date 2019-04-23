@@ -33,12 +33,12 @@ extensions = ['redirect',
               'sphinx.ext.autodoc',
               'sphinx.ext.todo',
               'sphinx.ext.viewcode',
-              'oslosphinx',
+              'openstackdocstheme',
               'yasfb',
              ]
 
 # Feed configuration for yasfb
-feed_base_url = 'http://murano-specs.readthedocs.org'
+feed_base_url = 'http://specs.openstack.org/openstack/murano-specs'
 feed_author = 'OpenStack Murano Team'
 
 todo_include_todos = True
