@@ -167,7 +167,7 @@ packages would be uploaded from the provided path there would be no
 interconnection with RabbitMQ
 
 #. Make changes to the class-loader, located in engine, to not use API.
-   Separate spec is provided for this change (https://review.openstack.org/#/c/198745/).
+   Separate spec is provided for this change (https://review.opendev.org/#/c/198745/).
 
 #. Implement testing framework, written in MuranoPL that will include the
    classes, described below. The structure would be taken from python unittest

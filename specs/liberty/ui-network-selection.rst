@@ -262,6 +262,6 @@ References
 
 * [1] https://wiki.openstack.org/wiki/Murano/Specifications/Network_Management
 
-* [2] https://review.openstack.org/#/c/201659/
+* [2] https://review.opendev.org/#/c/201659/
 
 * [3] https://murano.readthedocs.org/en/latest/draft/appdev-guide/muranopackages/dynamic_ui.html#dynamicuispec

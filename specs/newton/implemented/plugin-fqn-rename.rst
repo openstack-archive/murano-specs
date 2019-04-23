@@ -224,5 +224,5 @@ References
 ==========
 
 #. https://docs.oracle.com/javase/tutorial/java/package/namingpkgs.html
-#. http://docs.openstack.org/developer/stevedore/
-#. http://git.openstack.org/cgit/openstack/murano/tree/contrib/plugins/murano_exampleplugin/setup.cfg?h=stable/mitaka
+#. https://docs.openstack.org/stevedore/latest/
+#. https://opendev.org/openstack/murano/src/tag/mitaka-eol/contrib/plugins/murano_exampleplugin/setup.cfg

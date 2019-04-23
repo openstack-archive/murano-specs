@@ -290,4 +290,4 @@ References
 
 [1] https://wiki.openstack.org/wiki/Searchlight
 [2] http://docs.openstack.org/developer/glance/glancemetadefcatalogapi.html
-[3] https://review.openstack.org/#/c/378602
+[3] https://review.opendev.org/#/c/378602
