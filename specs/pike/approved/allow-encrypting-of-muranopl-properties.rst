@@ -161,12 +161,12 @@ murano-dashboard. MuranoPL Docs will also be needed on the new functions.
 References
 ==========
 
-.. [#] https://github.com/openstack/murano-apps/blob/master/MySQL/package/UI/ui.yaml
-.. [#] https://github.com/openstack/castellan
-.. [#] https://github.com/openstack/barbican
-.. [#] https://review.openstack.org/#/c/247561/
+.. [#] https://opendev.org/openstack/murano-apps/src/branch/master/MySQL/package/UI/ui.yaml
+.. [#] https://opendev.org/openstack/castellan
+.. [#] https://opendev.org/openstack/barbican
+.. [#] https://review.opendev.org/#/c/247561/
 .. [#] http://lists.openstack.org/pipermail/openstack-dev/2017-January/110192.html
-.. [#] https://github.com/openstack/castellan/tree/stable/ocata/castellan/key_manager
+.. [#] https://opendev.org/openstack/castellan/src/branch/stable/ocata/castellan/key_manager
 
 * Cinder discussion around their alternative insecure key manager for Castellan:
   http://lists.openstack.org/pipermail/openstack-dev/2016-January/083241.html
