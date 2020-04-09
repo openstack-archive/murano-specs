@@ -53,6 +53,14 @@ Pike specs:
 
    specs/pike/approved/*
 
+Queens specs:
+
+.. toctree::
+   :glob:
+   :maxdepth: 1
+
+   specs/queens/approved/*
+
 ==========================
 Murano apps Specifications
 ==========================

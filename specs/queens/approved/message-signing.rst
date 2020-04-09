@@ -192,7 +192,7 @@ Work Items
    agent
 6. Add stamp value to the messages
 7. Validate stamp value on the agent (including persistent tracking of the
-previous stamp value) for both agents
+   previous stamp value) for both agents
 
 
 Dependencies

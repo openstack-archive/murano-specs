@@ -161,7 +161,7 @@ Work Items
 Dependencies
 ============
 
-* Congress python client ( `GIT <https://opendev.org/openstack/python-congressclient`_ )
+* Congress python client ( `GIT <https://opendev.org/openstack/python-congressclient>`_ )
   will be added into Murano.
 * *Murano datasource driver* in Congress `murano driver spec
   <https://blueprints.launchpad.net/congress/+spec/murano-driver>`_
